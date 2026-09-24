@@ -1,7 +1,10 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { products } from "@/lib/products-data"
 
 export const maxDuration = 30
+
+const MODEL = process.env.OPENROUTER_MODEL ?? "inclusionai/ling-3.0-flash-sante:free"
 
 const productSummary = products
   .map((p) => `- ${p.name} (${p.tag}): ${p.description}`)
@@ -22,10 +25,25 @@ Your role:
 - Never invent facts about the company that are not provided here.`
 
 export async function POST(req: Request) {
+  const apiKey = process.env.OPENROUTER_API_KEY
+
+  if (!apiKey) {
+    return Response.json(
+      { error: "The assistant is not configured. Missing OPENROUTER_API_KEY." },
+      { status: 500 },
+    )
+  }
+
   const { messages }: { messages: UIMessage[] } = await req.json()
 
+  const openrouter = createOpenRouter({
+    apiKey,
+    appName: "AEIV Global",
+    appUrl: "https://aeivglobal.com",
+  })
+
   const result = streamText({
-    model: "openai/gpt-4o-mini",
+    model: openrouter.chat(MODEL),
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
   })
